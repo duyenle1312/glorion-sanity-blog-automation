@@ -10,9 +10,10 @@ export function slugify(title: string): string {
 }
 
 export async function uniqueSlug(
-  base: string,
+  rawBase: string,
   exists: (s: string) => Promise<boolean>,
 ): Promise<string> {
+  const base = rawBase || "post";
   if (!(await exists(base))) return base;
   for (let n = 2; ; n++) {
     const candidate = `${base}-${n}`;

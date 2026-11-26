@@ -59,6 +59,7 @@ describe("sanity", () => {
     expect(c.fetch).toHaveBeenCalledWith(
       'count(*[_type=="blog" && slug.current==$slug]) > 0',
       { slug: "t" },
+      { perspective: "raw" },
     );
   });
 

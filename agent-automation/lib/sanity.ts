@@ -28,6 +28,7 @@ export function getSanityClient(): SanityClient {
       token: env.SANITY_API_WRITE_TOKEN,
       apiVersion: "2026-05-15",
       useCdn: false,
+      perspective: "raw",
     });
   }
   return client;
@@ -37,6 +38,7 @@ export async function slugExists(slug: string): Promise<boolean> {
   return getSanityClient().fetch<boolean>(
     'count(*[_type=="blog" && slug.current==$slug]) > 0',
     { slug },
+    { perspective: "raw" },
   );
 }
 

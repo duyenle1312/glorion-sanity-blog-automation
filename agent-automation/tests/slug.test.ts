@@ -21,6 +21,9 @@ describe("uniqueSlug", () => {
   it("returns base when free", async () => {
     expect(await uniqueSlug("a", () => Promise.resolve(false))).toBe("a");
   });
+  it("falls back to post for empty base", async () => {
+    expect(await uniqueSlug(slugify("日本語"), (s) => Promise.resolve(s === "post"))).toBe("post-2");
+  });
   it("suffixes on collision", async () => {
     expect(
       await uniqueSlug("a", (s) => Promise.resolve(["a", "a-2"].includes(s))),
