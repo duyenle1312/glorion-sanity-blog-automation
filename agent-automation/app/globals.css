@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* GLORION Media — internal tool palette.
+   Navy ground derived from brand secondary #091199; colour encodes state:
+   blue (#5169F7) = in progress, gold (#C6A45A) = finished, coral = failed. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-ground: #070b2a;
+  --color-panel: #0d1340;
+  --color-line: #222a66;
+  --color-ink: #e9ebf8;
+  --color-mute: #8d93c4;
+  --color-run: #5169f7;
+  --color-gold: #c6a45a;
+  --color-fail: #f2707a;
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(81 105 247 / 0.55); }
+  100% { box-shadow: 0 0 0 10px rgb(81 105 247 / 0); }
+}
+.pulse-ring { animation: pulse-ring 1.4s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring, .animate-spin { animation: none; }
 }

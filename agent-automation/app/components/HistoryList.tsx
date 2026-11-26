@@ -1,0 +1,71 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+type RunSummary = { runId: string; status: string; createdAt: string; label: string };
+
+const STATUS: Record<string, { label: string; tone: string }> = {
+  pending: { label: "Queued", tone: "text-mute" },
+  running: { label: "Running", tone: "text-run" },
+  completed: { label: "Completed", tone: "text-gold" },
+  failed: { label: "Failed", tone: "text-fail" },
+  cancelled: { label: "Cancelled", tone: "text-mute" },
+};
+
+const when = (iso: string) =>
+  new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/** Recent runs from /api/runs, newest first. */
+export function HistoryList() {
+  const [runs, setRuns] = useState<RunSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/runs", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`The server responded with ${r.status}.`);
+        return (await r.json()) as { runs: RunSummary[] };
+      })
+      .then((body) => alive && setRuns(body.runs))
+      .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : "Could not load runs."));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (error) {
+    return <p role="alert" className="text-sm text-fail">Couldn’t load run history. {error}</p>;
+  }
+  if (!runs) return <p className="text-sm text-mute">Loading runs…</p>;
+  if (runs.length === 0) {
+    return (
+      <p className="text-sm text-mute">
+        No runs yet. <Link href="/" className="font-semibold text-gold hover:underline">Upload a document</Link> to start one.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-line border-y border-line">
+      {runs.map((run) => {
+        const s = STATUS[run.status] ?? { label: run.status, tone: "text-mute" };
+        return (
+          <li key={run.runId}>
+            <Link
+              href={`/runs/${run.runId}`}
+              className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 py-3.5 hover:bg-panel"
+            >
+              <span className="min-w-0 flex-1 truncate font-medium text-ink">{run.label}</span>
+              <span className={`text-sm ${s.tone}`}>{s.label}</span>
+              <time dateTime={run.createdAt} className="w-28 text-right text-xs tabular-nums text-mute">
+                {when(run.createdAt)}
+              </time>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

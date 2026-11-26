@@ -1,14 +1,8 @@
 import { getWritable } from "workflow";
 
-export type StepId =
-  | "received"
-  | "convert"
-  | "analyze"
-  | "cover"
-  | "sanity"
-  | "email"
-  | "done"
-  | "error";
+import type { StepId } from "./steps";
+
+export { STEP_TITLES, type StepId } from "./steps";
 
 export type TimelineEvent = {
   step: StepId;
@@ -17,17 +11,6 @@ export type TimelineEvent = {
   detail?: string;
   url?: string;
   timestamp: string;
-};
-
-export const STEP_TITLES: Record<StepId, string> = {
-  received: "File received",
-  convert: "Convert document",
-  analyze: "Analyze with Gemini",
-  cover: "Cover image",
-  sanity: "Create Sanity draft",
-  email: "Email notification",
-  done: "Draft ready",
-  error: "Agent failed",
 };
 
 /** Stamp an event with an ISO timestamp, dropping undefined optional fields. */
