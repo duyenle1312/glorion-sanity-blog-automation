@@ -13,7 +13,7 @@ export function NavTabs() {
   const history = useSearchParams().get("tab") === "history";
   const home = pathname === "/";
   return (
-    <nav className="flex gap-5 font-poppins text-sm font-semibold" aria-label="Main">
+    <nav className="flex gap-8 font-poppins text-base font-semibold" aria-label="Main">
       <Link href="/" className={tabClass(home && !history)} aria-current={home && !history ? "page" : undefined}>
         New run
       </Link>
@@ -27,7 +27,7 @@ export function NavTabs() {
 /** Static stand-in rendered before search params are available. */
 export function NavTabsFallback() {
   return (
-    <nav className="flex gap-5 font-poppins text-sm font-semibold" aria-label="Main">
+    <nav className="flex gap-8 font-poppins text-base font-semibold" aria-label="Main">
       <Link href="/" className={tabClass(false)}>New run</Link>
       <Link href="/?tab=history" className={tabClass(false)}>History</Link>
     </nav>
