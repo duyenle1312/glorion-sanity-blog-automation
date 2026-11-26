@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { RunView } from "@/app/components/RunView";
+import { postTitleFor } from "@/lib/run-title";
 
 async function RunFromParams({ params }: { params: Promise<{ runId: string }> }) {
   const { runId } = await params;
+  const title = await postTitleFor(runId);
   // key: a different run gets a fresh stream state
-  return <RunView key={runId} runId={runId} />;
+  return <RunView key={runId} runId={runId} title={title} />;
 }
 
 export default function RunPage({ params }: PageProps<"/runs/[runId]">) {

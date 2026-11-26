@@ -1,10 +1,11 @@
 import { connection, NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
 import { getWorld } from "workflow/runtime";
-import { blogAgentWorkflow, type BlogAgentResult } from "@/workflows/blog-agent";
+import { blogAgentWorkflow } from "@/workflows/blog-agent";
 import { validateUpload } from "@/lib/validate-upload";
 import type { TimelineEvent } from "@/lib/events";
 import { parseReceivedDetail } from "@/lib/run-summary";
+import { postTitleFor, within } from "@/lib/run-title";
 
 export const maxDuration = 60;
 
@@ -27,16 +28,6 @@ export async function POST(request: Request) {
   }
 }
 
-/** Resolve `promise`, or null after `ms` (so one slow run can't stall the list). */
-async function within<T>(promise: Promise<T>, ms: number): Promise<T | null> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([promise, new Promise<null>((r) => (timer = setTimeout(() => r(null), ms)))]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /** File name and destination project, from the run's first timeline event. */
 async function receivedFor(runId: string): Promise<{ filename: string; project: string } | null> {
   try {
@@ -53,17 +44,6 @@ async function receivedFor(runId: string): Promise<{ filename: string; project: 
   }
 }
 
-/** Post title of a completed run (its return value); null otherwise. */
-async function titleFor(runId: string, status: string): Promise<string | null> {
-  if (status !== "completed") return null;
-  try {
-    const result = await within(getRun<BlogAgentResult>(runId).returnValue, 1500);
-    return result?.title?.trim() || null;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET() {
   await connection();
   const world = await getWorld();
@@ -73,7 +53,7 @@ export async function GET() {
   });
   const runs = await Promise.all(
     data.slice(0, 25).map(async (r) => {
-      const [received, title] = await Promise.all([receivedFor(r.runId), titleFor(r.runId, r.status)]);
+      const [received, title] = await Promise.all([receivedFor(r.runId), postTitleFor(r.runId, r.status)]);
       return {
         runId: r.runId,
         status: r.status,
