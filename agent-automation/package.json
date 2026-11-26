@@ -19,7 +19,7 @@
     "ai": "^7.0.183",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "^26.1.0",
     "lucide-react": "^1.81.0",
     "mammoth": "^1.13.0",
     "nanoid": "^6.0.2",
@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
-    "@types/jsdom": "^30.0.0",
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.20.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
