@@ -11,11 +11,18 @@ cp .env.example .env.local   # then fill in the values
 npm run dev                  # http://localhost:3000
 ```
 
-Inspect workflow runs (local world) with:
+### Inspecting workflow runs
+
+Run the dashboard **from inside `agent-automation/`**. It opens at http://localhost:3456:
 
 ```bash
-npx workflow web
+cd agent-automation
+npx workflow web                 # local runs (from `npm run dev`)
+npx workflow inspect runs        # same data, in the terminal
+npx workflow web --backend vercel   # deployed runs on Vercel (needs `vc login`)
 ```
+
+> **Empty dashboard?** You probably started it from the repo root. Local runs are saved in `agent-automation/.next/workflow-data/world.db`, and the dashboard looks for that file starting from the folder it was launched in. From any other folder it finds nothing and shows an empty list. Stop it and run it again from `agent-automation/`. (`.workflow-data/` holds older test data. The dashboard doesn't show it.)
 
 Tests: `npm test` (unit) and `npm run test:integration` (workflow, in-process).
 

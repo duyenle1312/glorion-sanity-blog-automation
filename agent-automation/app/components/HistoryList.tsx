@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type RunSummary = { runId: string; status: string; createdAt: string; label: string };
+type RunSummary = {
+  runId: string;
+  status: string;
+  createdAt: string;
+  /** Post title; null until the run completes. */
+  title: string | null;
+  filename: string | null;
+  project: string | null;
+};
 
 const STATUS: Record<string, { label: string; tone: string }> = {
   pending: { label: "Queued", tone: "text-muted-foreground" },
@@ -57,7 +65,14 @@ export function HistoryList() {
               href={`/runs/${run.runId}`}
               className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 py-3.5 hover:bg-card"
             >
-              <span className="min-w-0 flex-1 truncate font-medium text-foreground">{run.label}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold uppercase tracking-wide text-gold">
+                  {run.project ?? "Unknown project"}
+                </span>
+                <span className="block truncate font-medium text-foreground">
+                  {run.title ?? run.filename ?? run.runId.slice(0, 12)}
+                </span>
+              </span>
               <span className={`text-sm ${s.tone}`}>{s.label}</span>
               <time dateTime={run.createdAt} className="w-28 text-right text-xs tabular-nums text-muted-foreground">
                 {when(run.createdAt)}
