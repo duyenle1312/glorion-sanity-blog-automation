@@ -17,7 +17,6 @@ const schema = z.object({
   BREVO_API_KEY: optional,
   BREVO_SENDER_EMAIL: optional,
   EMAIL_TO: optional,
-  AGENT_BASIC_AUTH: optional,
 });
 
 export type Env = z.infer<typeof schema>;

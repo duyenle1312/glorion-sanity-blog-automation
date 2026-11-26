@@ -33,12 +33,12 @@ Defined and validated in `lib/env.ts` (parsed lazily, so `next build` and tests 
   (base URL for "Open draft in Studio" links, e.g. `https://<name>.sanity.studio` or `http://localhost:3333`).
 - **Brevo email (optional):** `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` (must be a verified Brevo sender) and
   `EMAIL_TO` (comma-separated). If unset, the email step is skipped.
-- **Access gate (`AGENT_BASIC_AUTH`):** `username:password`. Optional locally, **required when deployed**,
-  because the app writes to production Sanity. Generate a password with `openssl rand -base64 18`.
 
 ## Deploying to Vercel
 
-Set the same variables in Project → Settings → Environment Variables (and set `AGENT_BASIC_AUTH`).
+Set the same variables in Project → Settings → Environment Variables.
+**There is no access gate:** anyone with the deployment URL can create Sanity drafts and spend Gemini quota.
+Turn on Vercel Deployment Protection (Project → Settings → Deployment Protection) if the URL may leak.
 The Workflow SDK selects the Vercel World automatically on Vercel; the local `.workflow-data/` directory
 is only used in local development.
 
@@ -48,4 +48,3 @@ is only used in local development.
 - `vercel.json` sets `supportsCancellation` for the stream route, so a closed browser tab cancels the streaming function instead of leaving it running.
 - Vercel **Hobby** is for non-commercial use only; a business deployment likely needs **Pro**.
 - Large uploads count toward Workflow "data written": the .docx is stored in the run's event log, so a 4 MB upload costs about 4 MB of Workflow data.
-- When deployed (`VERCEL` or `NODE_ENV=production`), the app answers 503 until `AGENT_BASIC_AUTH` is set.

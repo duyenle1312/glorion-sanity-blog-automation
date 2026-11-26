@@ -14,7 +14,6 @@ describe("getEnv", () => {
     expect(env.SANITY_PROJECT_ID).toBe("b57pzymc");
     expect(env.SANITY_DATASET).toBe("production");
     expect(env.BREVO_API_KEY).toBeUndefined();
-    expect(env.AGENT_BASIC_AUTH).toBeUndefined();
   });
 
   it("throws naming the missing SANITY_API_WRITE_TOKEN", () => {
