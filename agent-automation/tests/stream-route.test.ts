@@ -25,9 +25,9 @@ beforeEach(() => {
   );
 });
 
-const call = (qs = "") =>
+const call = (qs = "", runId = "wrun_ABC123") =>
   GET(new Request(`http://x/api/runs/r1/stream${qs}`), {
-    params: Promise.resolve({ runId: "r1" }),
+    params: Promise.resolve({ runId }),
   });
 
 describe("stream route", () => {
@@ -49,5 +49,37 @@ describe("stream route", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Run not found" });
     expect(getReadable).not.toHaveBeenCalled();
+  });
+  it("rejects a malformed runId with 404 before calling getRun", async () => {
+    for (const id of ["r1", "wrun_", "wrun_a/../b", "../etc", "wrun_a b"]) {
+      const res = await call("", id);
+      expect(res.status).toBe(404);
+    }
+    expect(status).not.toHaveBeenCalled();
+    expect(getReadable).not.toHaveBeenCalled();
+  });
+  it("reports the run status in x-run-status", async () => {
+    expect((await call()).headers.get("x-run-status")).toBe("running");
+  });
+  it("ends the response for a cancelled run whose stream never closes", async () => {
+    vi.useFakeTimers();
+    try {
+      status.mockResolvedValue("cancelled");
+      getReadable.mockImplementation(
+        () =>
+          new ReadableStream({
+            start(c) {
+              c.enqueue(events[0]);
+            }, // never closes
+          }),
+      );
+      const res = await call();
+      expect(res.headers.get("x-run-status")).toBe("cancelled");
+      const text = res.text();
+      await vi.advanceTimersByTimeAsync(5000);
+      expect((await text).split("\n").filter(Boolean)).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

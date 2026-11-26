@@ -2,7 +2,7 @@
 
 import { useEffect, useReducer, useState } from "react";
 import type { TimelineEvent } from "@/lib/events";
-import { reduceTimeline, splitNdjson, streamEndAction, type StepView } from "@/lib/timeline";
+import { endedUnexpectedly, reduceTimeline, splitNdjson, streamEndAction, type StepView } from "@/lib/timeline";
 
 const RECONNECT_MS = 1000;
 
@@ -65,6 +65,7 @@ export function useRunStream(runId: string | null): RunStream {
     async function follow() {
       while (!signal.aborted && !done) {
         let tail = ""; // unterminated bytes of the current response; never counted
+        let runStatus: string | null = null;
         try {
           const res = await fetch(
             `/api/runs/${encodeURIComponent(runId!)}/stream?from=${count}`,
@@ -75,6 +76,7 @@ export function useRunStream(runId: string | null): RunStream {
             return;
           }
           if (!res.ok || !res.body) throw new Error(`Stream responded ${res.status}`);
+          runStatus = res.headers.get("x-run-status");
           setConnected(true);
 
           const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -89,9 +91,20 @@ export function useRunStream(runId: string | null): RunStream {
           // network error: fall through to the end-of-stream decision
         }
         if (!signal.aborted) setConnected(false);
-        const end = streamEndAction({ finished: done, aborted: signal.aborted, tail });
-        end.lines.forEach(handleLine);
-        if (!end.reconnect) return;
+        const state = { finished: done, aborted: signal.aborted, runStatus };
+        if (endedUnexpectedly(state)) {
+          dispatch({
+            step: "error",
+            status: "error",
+            title: "Run failed",
+            detail: "Run ended unexpectedly",
+            timestamp: new Date().toISOString(),
+          });
+          done = true;
+          setFinished(true);
+          return;
+        }
+        if (!streamEndAction(state).reconnect) return;
         await sleep(RECONNECT_MS);
       }
     }

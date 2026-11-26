@@ -71,6 +71,8 @@ export async function sendDraftEmail(input: {
     .filter(Boolean)
     .map((email) => ({ email }));
 
+  if (recipients.length === 0) return "skipped";
+
   const response = await fetch(BREVO_URL, {
     method: "POST",
     headers: {

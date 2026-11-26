@@ -53,20 +53,31 @@ export function splitNdjson(buffer: string): { lines: string[]; rest: string } {
   return { lines: parts.map((l) => l.trim()).filter(Boolean), rest };
 }
 
-/** True once the run has reached a terminal event (`done` or run-level `error`). */
-export function isFinished(rows: StepView[]): boolean {
-  return rows.some((r) => (r.step === "done" && r.status === "done") || r.step === "error");
-}
+/** Run statuses after which no further events will be produced by the workflow. */
+export const ENDED_RUN_STATUSES = ["completed", "failed", "cancelled"];
 
 /**
  * What to do when one stream response ends. An unterminated tail is never
  * consumed: it may be a cut-off event, and not counting it means the
- * reconnect's `from=` asks the server to resend it whole.
+ * reconnect's `from=` asks the server to resend it whole. A run that ended
+ * (per the `x-run-status` header) without a terminal event will never produce
+ * one, so reconnecting is pointless.
  */
 export function streamEndAction(state: {
   finished: boolean;
   aborted: boolean;
-  tail: string;
-}): { reconnect: boolean; lines: string[] } {
-  return { reconnect: !state.finished && !state.aborted, lines: [] };
+  runStatus?: string | null;
+}): { reconnect: boolean } {
+  const ended = state.runStatus != null && ENDED_RUN_STATUSES.includes(state.runStatus);
+  return { reconnect: !state.finished && !state.aborted && !ended };
+}
+
+/** True when the run is over but the stream never delivered a done/error event. */
+export function endedUnexpectedly(state: { finished: boolean; aborted: boolean; runStatus?: string | null }): boolean {
+  return (
+    !state.finished &&
+    !state.aborted &&
+    state.runStatus != null &&
+    ENDED_RUN_STATUSES.includes(state.runStatus)
+  );
 }

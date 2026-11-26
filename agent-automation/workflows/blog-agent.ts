@@ -31,8 +31,9 @@ async function convertStep(filename: string, docx: Uint8Array): Promise<Converte
   "use step";
   await writeEvent({ step: "convert", status: "running", title: STEP_TITLES.convert });
   let html: string;
+  let warnings: string[];
   try {
-    ({ html } = await getDeps().docxToHtml(docx));
+    ({ html, warnings } = await getDeps().docxToHtml(docx));
   } catch (err) {
     // A broken file will not fix itself: fail the run without retrying.
     // The name check covers an InvalidDocxError created by another copy of the
@@ -49,6 +50,7 @@ async function convertStep(filename: string, docx: Uint8Array): Promise<Converte
   const tables = blocks.filter((b) => b._type === "table").length;
   let detail = `${plural(blocks.length, "block")}, ${plural(tables, "table")}`;
   if (droppedImages > 0) detail += `, ${plural(droppedImages, "image")} dropped`;
+  if (warnings.length > 0) detail += `, ${plural(warnings.length, "conversion warning")}`;
   await writeEvent({ step: "convert", status: "done", title: STEP_TITLES.convert, detail });
   return { title, blocks, summary };
 }
@@ -75,6 +77,8 @@ async function analyzeStep(doc: Converted): Promise<Analyzed> {
 }
 
 type Cover = { imageURL?: string; imageAssetId?: string };
+
+analyzeStep.maxRetries = 2;
 
 async function coverStep(
   coverUrl: string | undefined,

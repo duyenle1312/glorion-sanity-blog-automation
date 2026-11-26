@@ -121,6 +121,29 @@ describe("blogAgentWorkflow", () => {
     expect(deps.sendDraftEmail).not.toHaveBeenCalled();
   });
 
+  it("retries analysis on a plain Error, then fails the run without creating a draft", async () => {
+    deps.analyzeArticle.mockRejectedValue(new Error("Gemini 503"));
+    const run = await start(blogAgentWorkflow, [
+      { filename: "NFL_Sentiment_Blog.docx", docx: sample },
+    ]);
+    await expect(run.returnValue).rejects.toThrow();
+    const events = await collect(run.getReadable<TimelineEvent>());
+
+    expect(deps.analyzeArticle.mock.calls.length).toBeGreaterThan(1);
+    expect(events.at(-1)).toMatchObject({ step: "error", status: "error" });
+    expect(deps.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("reports conversion warnings in the convert detail", async () => {
+    deps.docxToHtml.mockResolvedValue({ html: "<h2>Summary</h2><p>Body text.</p>", warnings: ["w1", "w2"] });
+    const run = await start(blogAgentWorkflow, [{ filename: "x.docx", docx: sample }]);
+    await run.returnValue;
+    const events = await collect(run.getReadable<TimelineEvent>());
+    expect(events.find((e) => e.step === "convert" && e.status === "done")?.detail).toMatch(
+      /, 2 conversion warnings$/,
+    );
+  });
+
   it("completes when the email fails", async () => {
     deps.sendDraftEmail.mockRejectedValue(new Error("Brevo down"));
     const run = await start(blogAgentWorkflow, [

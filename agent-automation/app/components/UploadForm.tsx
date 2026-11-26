@@ -3,6 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState, type DragEvent, type FormEvent } from "react";
 
+import {
+  COVER_TOO_LARGE,
+  DOCX_TOO_LARGE,
+  MAX_COVER_BYTES,
+  MAX_DOCX_BYTES,
+  MAX_TOTAL_BYTES,
+  TOTAL_TOO_LARGE,
+} from "@/lib/upload-limits";
+
 const MB = 1024 * 1024;
 const formatSize = (bytes: number) =>
   bytes < MB ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / MB).toFixed(1)} MB`;
@@ -14,6 +23,7 @@ const inputClass =
 export function UploadForm() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  const [cover, setCover] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,7 +36,35 @@ export function UploadForm() {
       setError(`“${next.name}” is not a .docx file. Save it from Word as .docx and try again.`);
       return;
     }
+    if (next.size > MAX_DOCX_BYTES) {
+      setFile(null);
+      setError(DOCX_TOO_LARGE);
+      return;
+    }
+    if (cover && next.size + cover.size > MAX_TOTAL_BYTES) {
+      setFile(null);
+      setError(TOTAL_TOO_LARGE);
+      return;
+    }
     setFile(next);
+  }
+
+  function pickCover(input: HTMLInputElement) {
+    setError(null);
+    const next = input.files?.[0] ?? null;
+    if (next && next.size > MAX_COVER_BYTES) {
+      input.value = "";
+      setCover(null);
+      setError(COVER_TOO_LARGE);
+      return;
+    }
+    if (next && file && file.size + next.size > MAX_TOTAL_BYTES) {
+      input.value = "";
+      setCover(null);
+      setError(TOTAL_TOO_LARGE);
+      return;
+    }
+    setCover(next);
   }
 
   function onDrop(e: DragEvent<HTMLLabelElement>) {
@@ -114,6 +152,7 @@ export function UploadForm() {
             name="cover"
             type="file"
             accept="image/*"
+            onChange={(e) => pickCover(e.target)}
             className="block w-full text-sm text-mute file:mr-3 file:rounded-md file:border file:border-line file:bg-panel file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:border-mute"
           />
           <p className="text-xs text-mute">Image up to 2 MB. If both are given, the URL is used for imageURL.</p>

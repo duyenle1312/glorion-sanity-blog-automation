@@ -17,7 +17,13 @@ function unauthorized() {
 
 export function proxy(request: NextRequest) {
   const expected = process.env.AGENT_BASIC_AUTH;
-  if (!expected) return NextResponse.next();
+  if (!expected) {
+    // Fail closed when deployed: the app writes to production Sanity.
+    if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+      return new NextResponse("AGENT_BASIC_AUTH is not configured", { status: 503 });
+    }
+    return NextResponse.next();
+  }
 
   const header = request.headers.get("authorization") ?? "";
   const match = /^Basic\s+(.+)$/i.exec(header);

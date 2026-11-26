@@ -41,3 +41,11 @@ Defined and validated in `lib/env.ts` (parsed lazily, so `next build` and tests 
 Set the same variables in Project → Settings → Environment Variables (and set `AGENT_BASIC_AUTH`).
 The Workflow SDK selects the Vercel World automatically on Vercel; the local `.workflow-data/` directory
 is only used in local development.
+
+### Deployment notes
+
+- **Run history** is per-machine locally (it lives in `.workflow-data/`); once deployed on Vercel it is shared by everyone using the deployment.
+- `vercel.json` sets `supportsCancellation` for the stream route, so a closed browser tab cancels the streaming function instead of leaving it running.
+- Vercel **Hobby** is for non-commercial use only; a business deployment likely needs **Pro**.
+- Large uploads count toward Workflow "data written": the .docx is stored in the run's event log, so a 4 MB upload costs about 4 MB of Workflow data.
+- When deployed (`VERCEL` or `NODE_ENV=production`), the app answers 503 until `AGENT_BASIC_AUTH` is set.

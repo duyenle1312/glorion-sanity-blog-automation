@@ -55,6 +55,11 @@ describe("validateUpload", () => {
     const big = new File([new Uint8Array(3 * 1024 * 1024)], "c.png", { type: "image/png" });
     expect((await validateUpload(form({ file: docx(), cover: big }))).ok).toBe(false);
   });
+  it("rejects an SVG cover", async () => {
+    const svg = new File(["<svg/>"], "c.svg", { type: "image/svg+xml" });
+    const r = await validateUpload(form({ file: docx(), cover: svg }));
+    expect(r.ok).toBe(false);
+  });
   it("accepts a small image cover", async () => {
     const img = new File([new Uint8Array(10)], "c.png", { type: "image/png" });
     const r = await validateUpload(form({ file: docx(), cover: img }));

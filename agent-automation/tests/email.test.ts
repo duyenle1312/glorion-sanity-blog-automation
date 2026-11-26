@@ -116,4 +116,11 @@ describe("sendDraftEmail", () => {
       sendDraftEmail({ title: "Hello", studioUrl: "https://s.example.com" }),
     ).rejects.toThrow(/400.*bad request/);
   });
+
+  it("skips when EMAIL_TO has no recipients after splitting", async () => {
+    Object.assign(process.env, fullEnv, { EMAIL_TO: " , ," });
+    const result = await sendDraftEmail({ title: "Hello", studioUrl: "https://s.example.com" });
+    expect(result).toBe("skipped");
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

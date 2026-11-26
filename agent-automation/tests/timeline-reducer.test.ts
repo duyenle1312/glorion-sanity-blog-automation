@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineEvent } from "@/lib/events";
-import { reduceTimeline, splitNdjson, streamEndAction, type StepView } from "@/lib/timeline";
+import { endedUnexpectedly, reduceTimeline, splitNdjson, streamEndAction, type StepView } from "@/lib/timeline";
 
 const ev = (
   step: TimelineEvent["step"],
@@ -79,17 +79,31 @@ describe("splitNdjson", () => {
 
 describe("streamEndAction", () => {
   it("stops once the run reached done/error", () => {
-    expect(streamEndAction({ finished: true, aborted: false, tail: "" })).toEqual({ reconnect: false, lines: [] });
+    expect(streamEndAction({ finished: true, aborted: false })).toEqual({ reconnect: false });
   });
 
   it("stops when the consumer aborted", () => {
-    expect(streamEndAction({ finished: false, aborted: true, tail: "" }).reconnect).toBe(false);
+    expect(streamEndAction({ finished: false, aborted: true })).toEqual({ reconnect: false });
   });
 
-  it("reconnects otherwise and never consumes an unterminated tail (so from= resends it)", () => {
-    expect(streamEndAction({ finished: false, aborted: false, tail: '{"step":"conv' })).toEqual({
-      reconnect: true,
-      lines: [],
-    });
+  it("reconnects otherwise (an unterminated tail is never consumed, so from= resends it)", () => {
+    expect(streamEndAction({ finished: false, aborted: false })).toEqual({ reconnect: true });
+    expect(streamEndAction({ finished: false, aborted: false, runStatus: "running" })).toEqual({ reconnect: true });
+  });
+
+  it("does not reconnect once the run itself has ended", () => {
+    for (const runStatus of ["cancelled", "failed", "completed"]) {
+      expect(streamEndAction({ finished: false, aborted: false, runStatus })).toEqual({ reconnect: false });
+    }
+  });
+});
+
+describe("endedUnexpectedly", () => {
+  it("is true only when the run ended without a terminal event", () => {
+    expect(endedUnexpectedly({ finished: false, aborted: false, runStatus: "cancelled" })).toBe(true);
+    expect(endedUnexpectedly({ finished: true, aborted: false, runStatus: "failed" })).toBe(false);
+    expect(endedUnexpectedly({ finished: false, aborted: true, runStatus: "failed" })).toBe(false);
+    expect(endedUnexpectedly({ finished: false, aborted: false, runStatus: "running" })).toBe(false);
+    expect(endedUnexpectedly({ finished: false, aborted: false, runStatus: null })).toBe(false);
   });
 });
