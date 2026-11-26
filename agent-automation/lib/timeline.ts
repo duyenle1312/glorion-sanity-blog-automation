@@ -57,3 +57,16 @@ export function splitNdjson(buffer: string): { lines: string[]; rest: string } {
 export function isFinished(rows: StepView[]): boolean {
   return rows.some((r) => (r.step === "done" && r.status === "done") || r.step === "error");
 }
+
+/**
+ * What to do when one stream response ends. An unterminated tail is never
+ * consumed: it may be a cut-off event, and not counting it means the
+ * reconnect's `from=` asks the server to resend it whole.
+ */
+export function streamEndAction(state: {
+  finished: boolean;
+  aborted: boolean;
+  tail: string;
+}): { reconnect: boolean; lines: string[] } {
+  return { reconnect: !state.finished && !state.aborted, lines: [] };
+}

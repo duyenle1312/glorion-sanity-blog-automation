@@ -2,7 +2,7 @@
 
 import { useEffect, useReducer, useState } from "react";
 import type { TimelineEvent } from "@/lib/events";
-import { reduceTimeline, splitNdjson, type StepView } from "@/lib/timeline";
+import { reduceTimeline, splitNdjson, streamEndAction, type StepView } from "@/lib/timeline";
 
 const RECONNECT_MS = 1000;
 
@@ -35,11 +35,16 @@ export function useRunStream(runId: string | null): RunStream {
 
     const sleep = (ms: number) =>
       new Promise<void>((resolve) => {
+        if (signal.aborted) return resolve();
         const t = setTimeout(resolve, ms);
-        signal.addEventListener("abort", () => {
-          clearTimeout(t);
-          resolve();
-        });
+        signal.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(t);
+            resolve();
+          },
+          { once: true },
+        );
       });
 
     const handleLine = (line: string) => {
@@ -59,6 +64,7 @@ export function useRunStream(runId: string | null): RunStream {
 
     async function follow() {
       while (!signal.aborted && !done) {
+        let tail = ""; // unterminated bytes of the current response; never counted
         try {
           const res = await fetch(
             `/api/runs/${encodeURIComponent(runId!)}/stream?from=${count}`,
@@ -72,20 +78,21 @@ export function useRunStream(runId: string | null): RunStream {
           setConnected(true);
 
           const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-          let buffer = "";
           for (;;) {
             const { value, done: streamDone } = await reader.read();
             if (streamDone) break;
-            const { lines, rest } = splitNdjson(buffer + value);
-            buffer = rest;
+            const { lines, rest } = splitNdjson(tail + value);
+            tail = rest;
             lines.forEach(handleLine);
           }
-          if (buffer.trim()) handleLine(buffer.trim());
         } catch {
-          if (signal.aborted) return;
+          // network error: fall through to the end-of-stream decision
         }
-        setConnected(false);
-        if (!done) await sleep(RECONNECT_MS);
+        if (!signal.aborted) setConnected(false);
+        const end = streamEndAction({ finished: done, aborted: signal.aborted, tail });
+        end.lines.forEach(handleLine);
+        if (!end.reconnect) return;
+        await sleep(RECONNECT_MS);
       }
     }
 

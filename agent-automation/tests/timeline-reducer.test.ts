@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineEvent } from "@/lib/events";
-import { reduceTimeline, splitNdjson, type StepView } from "@/lib/timeline";
+import { reduceTimeline, splitNdjson, streamEndAction, type StepView } from "@/lib/timeline";
 
 const ev = (
   step: TimelineEvent["step"],
@@ -74,5 +74,22 @@ describe("splitNdjson", () => {
 
   it("drops blank lines", () => {
     expect(splitNdjson("\n{\"a\":1}\n\n")).toEqual({ lines: ['{"a":1}'], rest: "" });
+  });
+});
+
+describe("streamEndAction", () => {
+  it("stops once the run reached done/error", () => {
+    expect(streamEndAction({ finished: true, aborted: false, tail: "" })).toEqual({ reconnect: false, lines: [] });
+  });
+
+  it("stops when the consumer aborted", () => {
+    expect(streamEndAction({ finished: false, aborted: true, tail: "" }).reconnect).toBe(false);
+  });
+
+  it("reconnects otherwise and never consumes an unterminated tail (so from= resends it)", () => {
+    expect(streamEndAction({ finished: false, aborted: false, tail: '{"step":"conv' })).toEqual({
+      reconnect: true,
+      lines: [],
+    });
   });
 });
