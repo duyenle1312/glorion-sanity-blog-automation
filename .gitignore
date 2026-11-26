@@ -35,3 +35,4 @@ agent-automation/.env*.local
 agent-automation/.next
 agent-automation/.workflow-data
 agent-automation/next-env.d.ts
+.playwright-mcp/
