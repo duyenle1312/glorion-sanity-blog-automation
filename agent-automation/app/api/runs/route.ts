@@ -7,6 +7,8 @@ import type { TimelineEvent } from "@/lib/events";
 import { parseReceivedDetail } from "@/lib/run-summary";
 import { postTitleFor, within } from "@/lib/run-title";
 
+type World = Awaited<ReturnType<typeof getWorld>>;
+
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
@@ -46,11 +48,18 @@ async function receivedFor(runId: string): Promise<{ filename: string; project: 
 
 export async function GET() {
   await connection();
-  const world = await getWorld();
-  const { data } = await world.runs.list({
-    pagination: { limit: 25, sortOrder: "desc" },
-    resolveData: "none",
-  });
+  let data: Awaited<ReturnType<World["runs"]["list"]>>["data"];
+  try {
+    const world = await getWorld();
+    ({ data } = await world.runs.list({
+      pagination: { limit: 25, sortOrder: "desc" },
+      resolveData: "none",
+    }));
+  } catch (err) {
+    console.error("Failed to list workflow runs", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Could not list runs: ${message}` }, { status: 500 });
+  }
   const runs = await Promise.all(
     data.slice(0, 25).map(async (r) => {
       const [received, title] = await Promise.all([receivedFor(r.runId), postTitleFor(r.runId, r.status)]);

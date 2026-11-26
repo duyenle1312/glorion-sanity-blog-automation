@@ -33,7 +33,10 @@ export function HistoryList() {
     let alive = true;
     fetch("/api/runs", { cache: "no-store" })
       .then(async (r) => {
-        if (!r.ok) throw new Error(`The server responded with ${r.status}.`);
+        if (!r.ok) {
+          const body = (await r.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(body?.error ?? `The server responded with ${r.status}.`);
+        }
         return (await r.json()) as { runs: RunSummary[] };
       })
       .then((body) => alive && setRuns(body.runs))
