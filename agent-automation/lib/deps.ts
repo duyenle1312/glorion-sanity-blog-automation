@@ -37,6 +37,9 @@ export function getDeps(): AgentDeps {
 
 /** Test-only: replace collaborators for workflow integration tests. Pass null to reset. */
 export function setDepsForTesting(overrides: Partial<AgentDeps> | null): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("setDepsForTesting is not available in production");
+  }
   if (overrides) (globalThis as Holder)[OVERRIDES] = overrides;
   else delete (globalThis as Holder)[OVERRIDES];
 }

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createClient, type SanityClient } from "@sanity/client";
 import { getEnv } from "@/lib/env";
 import type { BodyItem } from "@/lib/convert/body-schema";
@@ -34,12 +35,33 @@ export function getSanityClient(): SanityClient {
   return client;
 }
 
-export async function slugExists(slug: string): Promise<boolean> {
+/**
+ * True when a blog document (published or draft) already uses `slug`.
+ * `excludeId` (a bare uuid) ignores that document's own draft and published
+ * versions, so a retried write does not collide with its earlier attempt.
+ */
+export async function slugExists(slug: string, excludeId?: string): Promise<boolean> {
+  if (excludeId === undefined) {
+    return getSanityClient().fetch<boolean>(
+      'count(*[_type=="blog" && slug.current==$slug]) > 0',
+      { slug },
+      { perspective: "raw" },
+    );
+  }
   return getSanityClient().fetch<boolean>(
-    'count(*[_type=="blog" && slug.current==$slug]) > 0',
-    { slug },
+    'count(*[_type=="blog" && slug.current==$slug && !(_id in [$draftId, $publishedId])]) > 0',
+    { slug, draftId: `drafts.${excludeId}`, publishedId: excludeId },
     { perspective: "raw" },
   );
+}
+
+/** Deterministic uuid (v4 layout) derived from an idempotency key, e.g. a workflow stepId. */
+export function draftIdFromKey(key: string): string {
+  const h = createHash("sha256").update(`blog-draft:${key}`).digest();
+  h[6] = (h[6] & 0x0f) | 0x40;
+  h[8] = (h[8] & 0x3f) | 0x80;
+  const hex = h.subarray(0, 16).toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 export async function uploadCover(file: {
@@ -60,12 +82,18 @@ export function studioDraftUrl(id: string): string {
   return `${base}/structure/blog;${id.replace(/^drafts\./, "")}`;
 }
 
+/**
+ * Write the draft `drafts.<id>`. Uses createOrReplace so a retry with the same
+ * `id` (see draftIdFromKey) overwrites its earlier attempt instead of
+ * creating a second document.
+ */
 export async function createDraft(
+  id: string,
   doc: BlogDraftInput,
 ): Promise<{ id: string; studioUrl: string }> {
-  const _id = `drafts.${crypto.randomUUID()}`;
+  const _id = `drafts.${id}`;
   const now = new Date().toISOString();
-  await getSanityClient().create({
+  await getSanityClient().createOrReplace({
     _id,
     _type: "blog",
     title: doc.title,

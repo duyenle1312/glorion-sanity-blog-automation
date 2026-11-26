@@ -1,4 +1,4 @@
-import { FatalError } from "workflow";
+import { FatalError, getStepMetadata } from "workflow";
 import { closeTimeline, emit, STEP_TITLES, writeEvent } from "@/lib/events";
 import { getDeps } from "@/lib/deps";
 import { InvalidDocxError } from "@/lib/convert/docx-to-html";
@@ -11,6 +11,7 @@ import {
 } from "@/lib/convert/structure";
 import type { BodyItem } from "@/lib/convert/body-schema";
 import { slugify, uniqueSlug } from "@/lib/slug";
+import { draftIdFromKey } from "@/lib/sanity";
 
 export type BlogAgentInput = {
   filename: string;
@@ -34,6 +35,8 @@ async function convertStep(filename: string, docx: Uint8Array): Promise<Converte
     ({ html } = await getDeps().docxToHtml(docx));
   } catch (err) {
     // A broken file will not fix itself: fail the run without retrying.
+    // The name check covers an InvalidDocxError created by another copy of the
+    // module (step bundles inline their own copy, so instanceof can miss).
     if (err instanceof InvalidDocxError || (err instanceof Error && err.name === "InvalidDocxError")) {
       throw new FatalError(err.message);
     }
@@ -79,11 +82,11 @@ async function coverStep(
 ): Promise<Cover> {
   "use step";
   const title = STEP_TITLES.cover;
+  await writeEvent({ step: "cover", status: "running", title });
   if (!coverUrl && !coverFile) {
     await writeEvent({ step: "cover", status: "skipped", title, detail: "No cover image" });
     return {};
   }
-  await writeEvent({ step: "cover", status: "running", title });
   if (!coverFile) {
     await writeEvent({ step: "cover", status: "done", title, detail: "Using cover URL" });
     return { imageURL: coverUrl };
@@ -102,8 +105,12 @@ async function sanityStep(
   "use step";
   await writeEvent({ step: "sanity", status: "running", title: STEP_TITLES.sanity });
   const deps = getDeps();
-  const slug = await uniqueSlug(slugify(title), deps.slugExists);
-  const draft = await deps.createDraft({
+  // stepId is stable across retries, so a retry after a write that landed but
+  // whose response was lost replaces the same document instead of adding a
+  // second one, and the slug check ignores that earlier attempt.
+  const id = draftIdFromKey(getStepMetadata().stepId);
+  const slug = await uniqueSlug(slugify(title), (s) => deps.slugExists(s, id));
+  const draft = await deps.createDraft(id, {
     title,
     slug,
     description: analyzed.description,
@@ -137,11 +144,10 @@ emailStep.maxRetries = 2;
 export async function blogAgentWorkflow(input: BlogAgentInput): Promise<BlogAgentResult> {
   "use workflow";
 
-  await emit({ step: "received", status: "done", title: STEP_TITLES.received, detail: input.filename });
-
   let title: string;
   let draft: { id: string; studioUrl: string };
   try {
+    await emit({ step: "received", status: "done", title: STEP_TITLES.received, detail: input.filename });
     const converted = await convertStep(input.filename, input.docx);
     title = converted.title;
     const analyzed = await analyzeStep(converted);

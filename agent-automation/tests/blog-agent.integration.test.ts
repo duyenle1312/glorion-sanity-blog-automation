@@ -86,12 +86,15 @@ describe("blogAgentWorkflow", () => {
     });
     const analyzeDone = events.find((e) => e.step === "analyze" && e.status === "done");
     expect(analyzeDone?.detail).toBe("Using existing Summary section");
-    expect(events.find((e) => e.step === "cover")?.status).toBe("skipped");
+    expect(events.filter((e) => e.step === "cover").map((e) => e.status)).toEqual([
+      "running",
+      "skipped",
+    ]);
     expect(events.at(-1)).toMatchObject({ step: "done", status: "done", url: STUDIO_URL });
     for (const e of events) expect(typeof e.timestamp).toBe("string");
 
     expect(deps.createDraft).toHaveBeenCalledTimes(1);
-    const draft = deps.createDraft.mock.calls[0][0];
+    const draft = deps.createDraft.mock.calls[0][1];
     expect(draft).not.toHaveProperty("isPublished");
     expect(draft.keywords.endsWith("GLORION Media")).toBe(true);
     expect(draft.slug).toBe(draft.slug.toLowerCase());
@@ -160,7 +163,7 @@ describe("blogAgentWorkflow", () => {
     expect(events.find((e) => e.step === "cover" && e.status === "done")?.detail).toBe(
       "Uploaded cover.png",
     );
-    expect(deps.createDraft.mock.calls[0][0]).toMatchObject({
+    expect(deps.createDraft.mock.calls[0][1]).toMatchObject({
       imageURL: "https://cdn.example/x.png",
       imageAssetId: "image-1",
     });
@@ -176,7 +179,7 @@ describe("blogAgentWorkflow", () => {
       },
     ]);
     await run.returnValue;
-    expect(deps.createDraft.mock.calls[0][0]).toMatchObject({
+    expect(deps.createDraft.mock.calls[0][1]).toMatchObject({
       imageURL: "https://img.example/c.jpg",
       imageAssetId: "image-1",
     });
@@ -203,11 +206,33 @@ describe("blogAgentWorkflow", () => {
       title: "my post",
       existingSummary: null,
     });
-    const draft = deps.createDraft.mock.calls[0][0];
+    const draft = deps.createDraft.mock.calls[0][1];
     expect(draft.slug).toBe("my-post-2");
     const [h, p] = draft.body as Array<{ style?: string; children?: Array<{ text: string }> }>;
     expect(h.style).toBe("h2");
     expect(h.children?.[0].text).toBe("Summary");
     expect(p.children?.[0].text).toBe("Generated summary paragraph.");
+  });
+
+  it("reuses the same draft id and slug when the Sanity step retries", async () => {
+    // Simulate a half-succeeded write: the document lands, then the step fails.
+    const written: Array<{ id: string; slug: string }> = [];
+    deps.slugExists.mockImplementation(async (s, excludeId) =>
+      written.some((w) => w.slug === s && w.id !== excludeId),
+    );
+    deps.createDraft.mockImplementation(async (id, doc) => {
+      written.push({ id, slug: doc.slug });
+      if (written.length === 1) throw new Error("socket hang up after write");
+      return { id: `drafts.${id}`, studioUrl: STUDIO_URL };
+    });
+    const run = await start(blogAgentWorkflow, [
+      { filename: "NFL_Sentiment_Blog.docx", docx: sample },
+    ]);
+    const result = await run.returnValue;
+
+    expect(deps.createDraft).toHaveBeenCalledTimes(2);
+    expect(new Set(written.map((w) => w.id)).size).toBe(1);
+    expect(new Set(written.map((w) => w.slug)).size).toBe(1);
+    expect(result.draftId).toBe(`drafts.${written[0].id}`);
   });
 });
