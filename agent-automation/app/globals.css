@@ -1,28 +1,93 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* GLORION Media — internal tool palette.
-   Navy ground derived from brand secondary #091199; colour encodes state:
-   blue (#5169F7) = in progress, gold (#C6A45A) = finished, coral = failed. */
+/* GLORION Media design system — copied from glorion-website/app/globals.css.
+   See DESIGN.md for the full reference. The app always renders the dark theme
+   (<html class="dark">). Colour encodes run state:
+   primary blue = in progress, gold = finished, destructive coral = failed. */
+
+@custom-variant dark (&:is(.dark *));
+
 @theme inline {
-  --color-ground: #070b2a;
-  --color-panel: #0d1340;
-  --color-line: #222a66;
-  --color-ink: #e9ebf8;
-  --color-mute: #8d93c4;
-  --color-run: #5169f7;
-  --color-gold: #c6a45a;
-  --color-fail: #f2707a;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-libre-bodoni: var(--font-libre-bodoni);
+  --font-geist-sans: var(--font-geist-sans);
+  --font-poppins: var(--font-poppins);
   --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-bricolage);
+
+  /* Brand colours (identical to the website) */
+  --color-primary: #5169f7;
+  --color-secondary: #091199;
+  --color-gold: #c6a45a;
+
+  /* Values the website repeats as arbitrary classes, named here */
+  --color-navy: #0d1670; /* radial page ground: from-navy to-black */
+  --color-body: #c3c3c3; /* body copy on black (text-[#C3C3C3]) */
+  --color-periwinkle: #8fa0ff; /* light-blue accents (text-[#8FA0FF]) */
+  --color-surface: #151515; /* dark panels (bg-[#151515]) */
+
+  /* shadcn semantic tokens */
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Glows used on hover across the website */
+  --shadow-glow: 0 0 60px 12px rgb(37 99 235 / 0.6);
+  --shadow-glow-violet: 0 0 60px 30px rgb(72 38 240 / 0.6);
 }
 
-html {
+:root {
+  --font-libre-bodoni: "Georgia", "Times New Roman", serif;
+  --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-poppins: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --radius: 0.625rem;
+}
+
+/* shadcn neutral dark values from the website, with the card/border tuned to
+   the website's dark panels. */
+.dark {
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: #151515;
+  --card-foreground: oklch(0.985 0 0);
+  --popover: #151515;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: #c3c3c3; /* website body grey */
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
   color-scheme: dark;
 }
 
-body {
-  background: var(--color-ground);
-  color: var(--color-ink);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 :focus-visible {

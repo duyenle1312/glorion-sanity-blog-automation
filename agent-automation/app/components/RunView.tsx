@@ -10,10 +10,10 @@ export function RunView({ runId }: { runId: string }) {
     <div className="space-y-6">
       {!stream.notFound && (
         <header>
-          <h1 className="font-display text-3xl font-bold tracking-tight break-words">
+          <h1 className="font-geist-sans text-4xl font-semibold tracking-tight text-balance break-words text-white">
             {received?.detail ?? "Blog agent run"}
           </h1>
-          <p className="mt-1 text-xs text-mute">Run {runId}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Run {runId}</p>
         </header>
       )}
       <Timeline {...stream} />

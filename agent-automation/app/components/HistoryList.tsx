@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 type RunSummary = { runId: string; status: string; createdAt: string; label: string };
 
 const STATUS: Record<string, { label: string; tone: string }> = {
-  pending: { label: "Queued", tone: "text-mute" },
-  running: { label: "Running", tone: "text-run" },
+  pending: { label: "Queued", tone: "text-muted-foreground" },
+  running: { label: "Running", tone: "text-primary" },
   completed: { label: "Completed", tone: "text-gold" },
-  failed: { label: "Failed", tone: "text-fail" },
-  cancelled: { label: "Cancelled", tone: "text-mute" },
+  failed: { label: "Failed", tone: "text-destructive" },
+  cancelled: { label: "Cancelled", tone: "text-muted-foreground" },
 };
 
 const when = (iso: string) =>
@@ -36,30 +36,30 @@ export function HistoryList() {
   }, []);
 
   if (error) {
-    return <p role="alert" className="text-sm text-fail">Couldn’t load run history. {error}</p>;
+    return <p role="alert" className="text-sm text-destructive">Couldn’t load run history. {error}</p>;
   }
-  if (!runs) return <p className="text-sm text-mute">Loading runs…</p>;
+  if (!runs) return <p className="text-sm text-muted-foreground">Loading runs…</p>;
   if (runs.length === 0) {
     return (
-      <p className="text-sm text-mute">
+      <p className="text-sm text-muted-foreground">
         No runs yet. <Link href="/" className="font-semibold text-gold hover:underline">Upload a document</Link> to start one.
       </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-line border-y border-line">
+    <ul className="divide-y divide-border border-y border-border">
       {runs.map((run) => {
-        const s = STATUS[run.status] ?? { label: run.status, tone: "text-mute" };
+        const s = STATUS[run.status] ?? { label: run.status, tone: "text-muted-foreground" };
         return (
           <li key={run.runId}>
             <Link
               href={`/runs/${run.runId}`}
-              className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 py-3.5 hover:bg-panel"
+              className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 py-3.5 hover:bg-card"
             >
-              <span className="min-w-0 flex-1 truncate font-medium text-ink">{run.label}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-foreground">{run.label}</span>
               <span className={`text-sm ${s.tone}`}>{s.label}</span>
-              <time dateTime={run.createdAt} className="w-28 text-right text-xs tabular-nums text-mute">
+              <time dateTime={run.createdAt} className="w-28 text-right text-xs tabular-nums text-muted-foreground">
                 {when(run.createdAt)}
               </time>
             </Link>

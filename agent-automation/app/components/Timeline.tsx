@@ -41,13 +41,13 @@ function Node({ status }: { status: RowStatus }) {
   switch (status) {
     case "running":
       return (
-        <span className={`${base} pulse-ring bg-run`} aria-hidden>
+        <span className={`${base} pulse-ring bg-primary`} aria-hidden>
           <span className="size-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
         </span>
       );
     case "done":
       return (
-        <span className={`${base} bg-gold text-ground`} aria-hidden>
+        <span className={`${base} bg-gold text-black`} aria-hidden>
           <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3.5 8.5l3 3 6-7" />
           </svg>
@@ -55,30 +55,30 @@ function Node({ status }: { status: RowStatus }) {
       );
     case "skipped":
       return (
-        <span className={`${base} border-2 border-gold/60 bg-ground text-gold`} aria-hidden>
+        <span className={`${base} border-2 border-gold/60 bg-black text-gold`} aria-hidden>
           <span className="h-0.5 w-2.5 rounded bg-current" />
         </span>
       );
     case "error":
       return (
-        <span className={`${base} bg-fail text-ground`} aria-hidden>
+        <span className={`${base} bg-destructive text-black`} aria-hidden>
           <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
         </span>
       );
     default:
-      return <span className={`${base} border-2 border-line bg-ground`} aria-hidden />;
+      return <span className={`${base} border-2 border-border bg-black`} aria-hidden />;
   }
 }
 
 const titleTone: Record<RowStatus, string> = {
-  running: "text-ink",
-  done: "text-ink",
-  skipped: "text-mute",
-  error: "text-fail",
-  waiting: "text-mute",
-  "not-run": "text-mute/60",
+  running: "text-foreground",
+  done: "text-foreground",
+  skipped: "text-muted-foreground",
+  error: "text-destructive",
+  waiting: "text-muted-foreground",
+  "not-run": "text-muted-foreground/60",
 };
 
 type Row = { step: StepId; title: string; status: RowStatus; view?: StepView };
@@ -103,9 +103,9 @@ function buildRows(steps: StepView[], finished: boolean): Row[] {
 export function Timeline({ steps, finished, connected, notFound }: Props) {
   if (notFound) {
     return (
-      <div className="rounded-lg border border-line bg-panel px-6 py-8">
-        <h2 className="font-display text-2xl font-semibold">Run not found</h2>
-        <p className="mt-2 text-sm text-mute">
+      <div className="rounded-2xl border border-border bg-card px-6 py-8">
+        <h2 className="font-geist-sans text-2xl font-semibold">Run not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           This run ID doesn’t exist on this server. It may have been started on another deployment.
         </p>
         <Link href="/" className="mt-5 inline-block text-sm font-semibold text-gold hover:underline">
@@ -122,7 +122,7 @@ export function Timeline({ steps, finished, connected, notFound }: Props) {
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-mute" aria-live="polite">
+      <p className="text-sm text-muted-foreground" aria-live="polite">
         {doneEvent
           ? "Finished."
           : failure
@@ -146,27 +146,27 @@ export function Timeline({ steps, finished, connected, notFound }: Props) {
                 <span
                   aria-hidden
                   className={`absolute left-[13px] top-7 bottom-0 w-0.5 transition-colors duration-500 ${
-                    complete ? "bg-gold" : "bg-line"
+                    complete ? "bg-gold" : "bg-border"
                   }`}
                 />
               )}
               <Node status={row.status} />
               <div className="min-w-0 flex-1 pt-0.5">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h3 className={`font-display text-lg font-semibold leading-6 ${titleTone[row.status]}`}>
+                  <h3 className={`font-geist-sans text-lg font-semibold leading-6 ${titleTone[row.status]}`}>
                     {row.title}
                   </h3>
-                  <span className="text-xs tabular-nums text-mute">
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     {view && clock(view.startedAt)}
-                    {took && <span className="text-mute/80"> · {took}</span>}
+                    {took && <span className="text-muted-foreground/80"> · {took}</span>}
                   </span>
                 </div>
                 <p className="mt-0.5 text-sm">
-                  <span className={row.status === "running" ? "text-run" : row.status === "error" ? "text-fail" : "text-mute"}>
+                  <span className={row.status === "running" ? "text-primary" : row.status === "error" ? "text-destructive" : "text-muted-foreground"}>
                     {STATUS_LABEL[row.status]}
                   </span>
                 </p>
-                {view?.detail && <p className="mt-1 break-words text-sm text-ink/80">{view.detail}</p>}
+                {view?.detail && <p className="mt-1 break-words text-sm text-foreground/80">{view.detail}</p>}
               </div>
             </li>
           );
@@ -174,17 +174,17 @@ export function Timeline({ steps, finished, connected, notFound }: Props) {
       </ol>
 
       {doneEvent && (
-        <section className="rounded-lg border border-gold/50 bg-panel px-6 py-6">
-          <h2 className="font-display text-2xl font-semibold text-gold">{doneEvent.title}</h2>
-          <p className="mt-2 max-w-prose text-sm text-ink/85">
-            Draft saved — review in Studio and set <code className="rounded bg-ground px-1 py-0.5 text-gold">isPublished</code> to publish.
+        <section className="rounded-2xl border border-gold/50 bg-card px-6 py-6">
+          <h2 className="font-libre-bodoni text-2xl font-bold italic text-gold">{doneEvent.title}</h2>
+          <p className="mt-2 max-w-prose text-sm text-foreground/85">
+            Draft saved — review in Studio and set <code className="rounded bg-black px-1 py-0.5 text-gold">isPublished</code> to publish.
           </p>
           {doneEvent.url && (
             <a
               href={doneEvent.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-block rounded-md bg-gold px-5 py-2.5 text-sm font-semibold text-ground transition-colors hover:bg-gold/85"
+              className="mt-5 inline-flex items-center rounded-full bg-gold px-7 py-3 font-poppins text-sm font-semibold text-black transition-all hover:bg-gold/90 hover:shadow-[0_0_40px_8px_rgb(198_164_90/0.35)]"
             >
               Open draft in Studio
             </a>
@@ -193,10 +193,10 @@ export function Timeline({ steps, finished, connected, notFound }: Props) {
       )}
 
       {failure && (
-        <section role="alert" className="rounded-lg border border-fail/50 bg-fail/10 px-6 py-6">
-          <h2 className="font-display text-2xl font-semibold text-fail">{failure.title}</h2>
-          {failure.detail && <p className="mt-2 max-w-prose break-words text-sm text-ink/85">{failure.detail}</p>}
-          <p className="mt-2 text-sm text-mute">Fix the issue above, then start a new run.</p>
+        <section role="alert" className="rounded-2xl border border-destructive/50 bg-destructive/10 px-6 py-6">
+          <h2 className="font-geist-sans text-2xl font-semibold text-destructive">{failure.title}</h2>
+          {failure.detail && <p className="mt-2 max-w-prose break-words text-sm text-foreground/85">{failure.detail}</p>}
+          <p className="mt-2 text-sm text-muted-foreground">Fix the issue above, then start a new run.</p>
           <Link href="/" className="mt-4 inline-block text-sm font-semibold text-gold hover:underline">
             Start a new run
           </Link>

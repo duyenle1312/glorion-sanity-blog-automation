@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type DragEvent, type FormEvent } from "react";
 
+import { Button } from "@/components/ui/button";
 import {
   COVER_TOO_LARGE,
   DOCX_TOO_LARGE,
@@ -17,7 +18,7 @@ const formatSize = (bytes: number) =>
   bytes < MB ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / MB).toFixed(1)} MB`;
 
 const inputClass =
-  "w-full rounded-md border border-line bg-ground px-3 py-2 text-sm text-ink placeholder:text-mute/70 focus:border-run focus:outline-none";
+  "w-full rounded-md border border-border bg-black px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none";
 
 /** Upload a .docx (+ optional cover) and hand off to the live run page. */
 export function UploadForm() {
@@ -106,8 +107,8 @@ export function UploadForm() {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`flex cursor-pointer flex-col items-start gap-1 rounded-lg border border-dashed px-6 py-10 transition-colors ${
-          dragging ? "border-run bg-run/10" : file ? "border-gold/60 bg-panel" : "border-line bg-panel hover:border-mute"
+        className={`flex cursor-pointer flex-col items-start gap-1 rounded-2xl border border-dashed px-6 py-10 transition-colors ${
+          dragging ? "border-primary bg-primary/10" : file ? "border-gold/60 bg-card" : "border-border bg-card hover:border-muted-foreground"
         }`}
       >
         <input
@@ -119,23 +120,23 @@ export function UploadForm() {
         />
         {file ? (
           <>
-            <span className="font-display text-xl font-semibold text-ink">{file.name}</span>
-            <span className="text-sm text-mute">
+            <span className="font-geist-sans text-xl font-semibold text-foreground">{file.name}</span>
+            <span className="text-sm text-muted-foreground">
               {formatSize(file.size)} · <span className="text-gold underline-offset-2 hover:underline">Choose another file</span>
             </span>
           </>
         ) : (
           <>
-            <span className="font-display text-xl font-semibold text-ink">Drop a Word document here</span>
-            <span className="text-sm text-mute">or click to browse. .docx only, up to 4 MB.</span>
+            <span className="font-geist-sans text-xl font-semibold text-foreground">Drop a Word document here</span>
+            <span className="text-sm text-muted-foreground">or click to browse. .docx only, up to 4 MB.</span>
           </>
         )}
       </label>
 
       <fieldset className="space-y-4">
-        <legend className="mb-3 text-sm text-mute">Cover image (optional)</legend>
+        <legend className="mb-3 text-sm text-muted-foreground">Cover image (optional)</legend>
         <div className="space-y-1.5">
-          <label htmlFor="coverUrl" className="block text-sm text-ink">Cover image URL</label>
+          <label htmlFor="coverUrl" className="block text-sm text-foreground">Cover image URL</label>
           <input
             id="coverUrl"
             name="coverUrl"
@@ -146,32 +147,32 @@ export function UploadForm() {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="cover" className="block text-sm text-ink">Or upload a cover file</label>
+          <label htmlFor="cover" className="block text-sm text-foreground">Or upload a cover file</label>
           <input
             id="cover"
             name="cover"
             type="file"
             accept="image/*"
             onChange={(e) => pickCover(e.target)}
-            className="block w-full text-sm text-mute file:mr-3 file:rounded-md file:border file:border-line file:bg-panel file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:border-mute"
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-sm file:text-foreground hover:file:border-muted-foreground"
           />
-          <p className="text-xs text-mute">Image up to 2 MB. If both are given, the URL is used for imageURL.</p>
+          <p className="text-xs text-muted-foreground">Image up to 2 MB. If both are given, the URL is used for imageURL.</p>
         </div>
       </fieldset>
 
       {error && (
-        <p role="alert" className="rounded-md border border-fail/40 bg-fail/10 px-3 py-2 text-sm text-fail">
+        <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={submitting}
-        className="rounded-md bg-run px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-run/85 disabled:cursor-wait disabled:opacity-60"
+        className="h-auto rounded-full px-10 py-3.5 font-poppins text-base font-semibold disabled:cursor-wait"
       >
         {submitting ? "Starting agent…" : "Run agent"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 type Health = { ok: boolean; sanity: boolean; gemini: boolean };
 
 function Dot({ label, ok }: { label: string; ok: boolean | undefined }) {
-  const tone = ok === undefined ? "bg-line" : ok ? "bg-gold" : "bg-fail";
+  const tone = ok === undefined ? "bg-border" : ok ? "bg-gold" : "bg-destructive";
   const state = ok === undefined ? "checking" : ok ? "configured" : "missing configuration";
   return (
     <span className="flex items-center gap-1.5" title={`${label}: ${state}`}>
@@ -33,10 +33,10 @@ export function HealthStatus() {
   }, []);
 
   if (down) {
-    return <span className="ml-auto text-xs text-fail">Server unreachable</span>;
+    return <span className="ml-auto text-xs text-destructive">Server unreachable</span>;
   }
   return (
-    <div className="ml-auto flex gap-4 text-xs text-mute" aria-label="Integration status">
+    <div className="ml-auto flex gap-4 text-xs text-muted-foreground" aria-label="Integration status">
       <Dot label="Sanity" ok={health?.sanity} />
       <Dot label="Gemini" ok={health?.gemini} />
     </div>
