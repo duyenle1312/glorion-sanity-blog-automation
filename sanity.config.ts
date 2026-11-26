@@ -9,9 +9,6 @@ export default defineConfig({
 
   projectId: 'b57pzymc',
   dataset: 'production',
-  deployment: {
-    appId: 'heul13kby5rlmzaw5z0bi8v6',
-  },
 
   plugins: [structureTool(), visionTool()],
 
