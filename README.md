@@ -15,6 +15,8 @@ The repo holds two apps:
 
 ## Architecture
 
+![Diagram](./docs/images/mermaid-diagram.png)
+
 ```mermaid
 flowchart LR
     Editor([Editor])
