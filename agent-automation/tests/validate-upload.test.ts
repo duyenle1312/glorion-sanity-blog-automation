@@ -60,4 +60,12 @@ describe("validateUpload", () => {
     const r = await validateUpload(form({ file: docx(), cover: img }));
     expect(r.ok && r.input.coverFile?.contentType).toBe("image/png");
   });
+  it("rejects docx + cover over 4.4 MB combined", async () => {
+    const big = new Uint8Array(3 * 1024 * 1024);
+    big.set(PK);
+    const cover = new File([new Uint8Array(2 * 1024 * 1024)], "c.png", { type: "image/png" });
+    const r = await validateUpload(form({ file: docx("a.docx", big), cover }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("4.4 MB");
+  });
 });

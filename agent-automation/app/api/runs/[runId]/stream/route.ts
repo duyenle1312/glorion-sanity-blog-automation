@@ -10,7 +10,14 @@ export async function GET(
   const raw = Number.parseInt(new URL(request.url).searchParams.get("from") ?? "0", 10);
   const startIndex = Number.isFinite(raw) && raw >= 0 ? raw : 0;
 
-  const readable = getRun(runId).getReadable({ startIndex });
+  const run = getRun(runId);
+  try {
+    await run.status; // rejects for an unknown run; getReadable alone is lazy
+  } catch {
+    return Response.json({ error: "Run not found" }, { status: 404 });
+  }
+
+  const readable = run.getReadable({ startIndex });
   const encoder = new TextEncoder();
   const body = readable.pipeThrough(
     new TransformStream({

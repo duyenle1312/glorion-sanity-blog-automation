@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getReadable = vi.fn();
+const status = vi.fn();
 vi.mock("workflow/api", () => ({
-  getRun: () => ({ getReadable }),
+  getRun: () => ({ getReadable, get status() { return status(); } }),
   start: vi.fn(),
 }));
 
@@ -12,6 +13,8 @@ const events = [0, 1, 2].map((i) => ({ step: "convert", status: "done", title: `
 
 beforeEach(() => {
   getReadable.mockReset();
+  status.mockReset();
+  status.mockResolvedValue("running");
   getReadable.mockImplementation(({ startIndex = 0 }: { startIndex?: number }) =>
     new ReadableStream({
       start(c) {
@@ -39,5 +42,12 @@ describe("stream route", () => {
   it("defaults to index 0 and ignores bad from", async () => {
     const res = await call("?from=abc");
     expect((await res.text()).split("\n").filter(Boolean)).toHaveLength(3);
+  });
+  it("returns 404 for an unknown run without streaming", async () => {
+    status.mockRejectedValue(new Error("not found"));
+    const res = await call();
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Run not found" });
+    expect(getReadable).not.toHaveBeenCalled();
   });
 });

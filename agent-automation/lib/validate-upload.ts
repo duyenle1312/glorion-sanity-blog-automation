@@ -2,6 +2,8 @@ import type { BlogAgentInput } from "@/workflows/blog-agent";
 
 export const MAX_DOCX_BYTES = 4 * 1024 * 1024;
 export const MAX_COVER_BYTES = 2 * 1024 * 1024;
+// Vercel caps request bodies at ~4.5 MB.
+export const MAX_TOTAL_BYTES = 4.4 * 1024 * 1024;
 
 export type UploadResult =
   | { ok: true; input: BlogAgentInput }
@@ -39,6 +41,9 @@ export async function validateUpload(form: FormData): Promise<UploadResult> {
   if (isFile(cover) && cover.size > 0) {
     if (!cover.type.startsWith("image/")) return fail("The cover file must be an image.");
     if (cover.size > MAX_COVER_BYTES) return fail("The cover image must be 2 MB or smaller.");
+    if (file.size + cover.size > MAX_TOTAL_BYTES) {
+      return fail("Upload too large: docx and cover together must be under 4.4 MB.");
+    }
     input.coverFile = {
       bytes: new Uint8Array(await cover.arrayBuffer()),
       filename: cover.name,

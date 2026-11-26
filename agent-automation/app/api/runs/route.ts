@@ -17,21 +17,30 @@ export async function POST(request: Request) {
   const result = await validateUpload(form);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
-  const run = await start(blogAgentWorkflow, [result.input]);
-  return NextResponse.json({ runId: run.runId }, { status: 201 });
+  try {
+    const run = await start(blogAgentWorkflow, [result.input]);
+    return NextResponse.json({ runId: run.runId }, { status: 201 });
+  } catch (err) {
+    console.error("Failed to start blog agent run", err);
+    return NextResponse.json({ error: "Could not start the agent" }, { status: 500 });
+  }
 }
 
 async function labelFor(runId: string): Promise<string> {
   const fallback = runId.slice(0, 12);
   try {
     const reader = getRun(runId).getReadable<TimelineEvent>({ startIndex: 0 }).getReader();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const first = await Promise.race([
         reader.read(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), 1500);
+        }),
       ]);
       return (first && !first.done && first.value?.detail) || fallback;
     } finally {
+      clearTimeout(timer);
       await reader.cancel().catch(() => {});
     }
   } catch {
