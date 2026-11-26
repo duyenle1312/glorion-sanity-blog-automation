@@ -22,6 +22,14 @@ describe("findSummary", () => {
     expect(findSummary(body("<p>Summary of results is below</p><p>x</p>"))).toBeNull();
   });
 
+  it("does not match a bold-only paragraph that merely starts with Summary", () => {
+    expect(findSummary(body("<p><strong>Summary of results</strong></p><p>x</p>"))).toBeNull();
+  });
+
+  it("returns null when the Summary marker is directly followed by a heading", () => {
+    expect(findSummary(body("<h2>Summary</h2><h2>Next</h2><p>c</p>"))).toBeNull();
+  });
+
   it("returns null when there is no summary", () => {
     expect(findSummary(body("<h2>Intro</h2><p>x</p>"))).toBeNull();
   });
@@ -55,6 +63,24 @@ describe("extractTitle", () => {
     });
   });
 
+  it("falls back to Untitled and removes empty h1 blocks", () => {
+    const { title, blocks } = extractTitle(body("<h1> </h1><p>x</p>"), "!!!.docx");
+    expect(title).toBe("Untitled");
+    expect(blocks.some((b) => (b as { style?: string }).style === "h1")).toBe(false);
+  });
+
+  it("uses the first non-empty h1 and removes empty ones before it", () => {
+    const blocks = insertSummary(body("<h1>Real</h1><p>x</p>"), "s");
+    const withEmpty = [
+      { _type: "block", _key: "e1", style: "h1", markDefs: [], children: [{ _type: "span", _key: "e1s", text: " ", marks: [] }] },
+      ...blocks,
+    ] as typeof blocks;
+    const out = extractTitle(withEmpty, "f.docx");
+    expect(out.title).toBe("Real");
+    expect(out.blocks.some((b) => (b as { style?: string }).style === "h1")).toBe(false);
+    expect(out.blocks).toHaveLength(3);
+  });
+
   it("uses and removes the first h1", () => {
     const { title, blocks } = extractTitle(body("<h1>T</h1><p>x</p><h1>Second</h1>"), "f.docx");
     expect(title).toBe("T");
@@ -77,6 +103,15 @@ describe("htmlToBody", () => {
     const out = htmlToBody('<p>a</p><p><img src="data:image/png;base64,AA=="></p><img src="x.png">');
     expect(out.droppedImages).toBe(2);
     expect(JSON.stringify(out.blocks)).not.toContain("image");
+  });
+
+  it("defaults headerRows to 1 for a multi-row table without header markup, 0 for single-row", () => {
+    const [multi] = body(
+      "<table><tr><td>a</td></tr><tr><td>b</td></tr></table>",
+    ) as unknown as Array<{ headerRows: number }>;
+    expect(multi.headerRows).toBe(1);
+    const [single] = body("<table><tr><td>a</td></tr></table>") as unknown as Array<{ headerRows: number }>;
+    expect(single.headerRows).toBe(0);
   });
 
   it("uses thead rows for headerRows", () => {

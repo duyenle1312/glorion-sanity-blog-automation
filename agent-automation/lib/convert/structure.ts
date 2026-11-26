@@ -33,16 +33,18 @@ export function extractTitle(
   blocks: BodyItem[],
   filename: string,
 ): { title: string; blocks: BodyItem[] } {
-  const index = blocks.findIndex((b) => isTextBlock(b) && b.style === "h1");
-  if (index !== -1) {
-    const title = blockText(blocks[index] as TextBlock).trim();
-    if (title) return { title, blocks: blocks.filter((_, i) => i !== index) };
-  }
+  const isH1 = (b: BodyItem) => isTextBlock(b) && b.style === "h1";
+  const titleBlock = blocks.find((b) => isH1(b) && blockText(b as TextBlock).trim() !== "");
+  // Drop the title h1 and any empty h1 blocks.
+  const rest = blocks.filter(
+    (b) => b !== titleBlock && !(isH1(b) && blockText(b as TextBlock).trim() === ""),
+  );
+  if (titleBlock) return { title: blockText(titleBlock as TextBlock).trim(), blocks: rest };
   const title = filename
     .replace(/\.[^.]*$/, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
-  return { title, blocks };
+  return { title: title || "Untitled", blocks: rest };
 }
 
 export function findSummary(blocks: BodyItem[]): { text: string } | null {
@@ -55,6 +57,7 @@ export function findSummary(blocks: BodyItem[]): { text: string } | null {
     const text = blockText(b).trim();
     if (text) paragraphs.push(text);
   }
+  if (paragraphs.length === 0) return null;
   return { text: paragraphs.join("\n\n") };
 }
 
