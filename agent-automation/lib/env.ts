@@ -7,13 +7,10 @@ const withDefault = (value: string) =>
   z.preprocess(emptyToUndefined, z.string().default(value));
 const required = z.preprocess(emptyToUndefined, z.string());
 
+// Sanity credentials are per target: see lib/targets.ts.
 const schema = z.object({
   GEMINI_API_KEY: required,
   GEMINI_MODEL: withDefault("gemini-3.5-flash-lite"),
-  SANITY_PROJECT_ID: withDefault("b57pzymc"),
-  SANITY_DATASET: withDefault("production"),
-  SANITY_API_WRITE_TOKEN: required,
-  SANITY_STUDIO_URL: required,
   BREVO_API_KEY: optional,
   BREVO_SENDER_EMAIL: optional,
   EMAIL_TO: optional,

@@ -82,7 +82,7 @@ describe("blogAgentWorkflow", () => {
     expect(events[0]).toMatchObject({
       step: "received",
       status: "done",
-      detail: "NFL_Sentiment_Blog.docx",
+      detail: "NFL_Sentiment_Blog.docx → Glorion Media",
     });
     const analyzeDone = events.find((e) => e.step === "analyze" && e.status === "done");
     expect(analyzeDone?.detail).toBe("Using existing Summary section");
@@ -100,10 +100,25 @@ describe("blogAgentWorkflow", () => {
     expect(draft.slug).toBe(draft.slug.toLowerCase());
     expect(draft.imageURL).toBeUndefined();
     expect(draft.imageAssetId).toBeUndefined();
+    expect(deps.createDraft.mock.calls[0][2]).toBe("glorion");
     expect(deps.sendDraftEmail).toHaveBeenCalledWith({
       title: result.title,
       studioUrl: STUDIO_URL,
+      site: "Glorion Media",
     });
+  });
+
+  it("writes to the chosen target", async () => {
+    const run = await start(blogAgentWorkflow, [
+      { filename: "post.docx", docx: sample, target: "tsvetta", coverFile: { bytes: new Uint8Array([1]), filename: "c.png", contentType: "image/png" } },
+    ]);
+    await run.returnValue;
+    const events = await collect(run.getReadable<TimelineEvent>());
+    expect(events[0].detail).toBe("post.docx → Tsvetta Website");
+    expect(deps.uploadCover.mock.calls[0][1]).toBe("tsvetta");
+    expect(deps.slugExists.mock.calls[0][2]).toBe("tsvetta");
+    expect(deps.createDraft.mock.calls[0][2]).toBe("tsvetta");
+    expect(deps.sendDraftEmail.mock.calls[0][0].site).toBe("Tsvetta Website");
   });
 
   it("stops before Sanity when analysis fails fatally", async () => {

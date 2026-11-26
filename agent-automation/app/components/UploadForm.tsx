@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type DragEvent, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type DragEvent, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,17 @@ import {
   MAX_TOTAL_BYTES,
   TOTAL_TOO_LARGE,
 } from "@/lib/upload-limits";
+import type { TargetOption } from "@/lib/targets";
+
+const TARGET_KEY = "blog-agent:target";
+const noopSubscribe = () => () => {};
+const readSavedTarget = () => {
+  try {
+    return localStorage.getItem(TARGET_KEY);
+  } catch {
+    return null;
+  }
+};
 
 const MB = 1024 * 1024;
 const formatSize = (bytes: number) =>
@@ -21,13 +32,25 @@ const inputClass =
   "w-full rounded-md border border-border bg-black px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none";
 
 /** Upload a .docx (+ optional cover) and hand off to the live run page. */
-export function UploadForm() {
+export function UploadForm({ targets }: { targets: TargetOption[] }) {
   const router = useRouter();
+  // Last destination used on this browser (null during SSR), unless picked now.
+  const saved = useSyncExternalStore(noopSubscribe, readSavedTarget, () => null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const preferred = chosen ?? saved;
+  const target = targets.some((t) => t.id === preferred) ? preferred! : (targets[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  function chooseTarget(id: string) {
+    setChosen(id);
+    try {
+      localStorage.setItem(TARGET_KEY, id);
+    } catch {}
+  }
 
   function pick(next: File | null | undefined) {
     setError(null);
@@ -80,6 +103,10 @@ export function UploadForm() {
       setError("Choose a .docx file to run the agent.");
       return;
     }
+    if (!target) {
+      setError("No Sanity project is configured. Add a write token and Studio URL (see README).");
+      return;
+    }
     const form = new FormData(e.currentTarget);
     form.set("file", file); // a dropped file is not in the input's FileList
     setSubmitting(true);
@@ -100,6 +127,27 @@ export function UploadForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6" noValidate>
+      <div className="space-y-1.5">
+        <label htmlFor="target" className="block text-sm text-foreground">Select Project:</label>
+        {targets.length > 0 ? (
+          <select
+            id="target"
+            name="target"
+            value={target}
+            onChange={(e) => chooseTarget(e.target.value)}
+            className={inputClass}
+          >
+            {targets.map((t) => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+        ) : (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            No Sanity project is configured. Set a write token and Studio URL for at least one site.
+          </p>
+        )}
+      </div>
+
       <label
         onDragOver={(e) => {
           e.preventDefault();
@@ -107,7 +155,7 @@ export function UploadForm() {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`flex cursor-pointer flex-col items-start gap-1 rounded-2xl border border-dashed px-6 py-10 transition-colors ${
+        className={`flex cursor-pointer flex-col items-center gap-1 rounded-2xl text-center border border-dashed px-6 py-10 transition-colors ${
           dragging ? "border-primary bg-primary/10" : file ? "border-gold/60 bg-card" : "border-border bg-card hover:border-muted-foreground"
         }`}
       >
@@ -133,31 +181,33 @@ export function UploadForm() {
         )}
       </label>
 
-      <fieldset className="space-y-4">
+      <fieldset>
         <legend className="mb-3 text-sm text-muted-foreground">Cover image (optional)</legend>
-        <div className="space-y-1.5">
-          <label htmlFor="coverUrl" className="block text-sm text-foreground">Cover image URL</label>
-          <input
-            id="coverUrl"
-            name="coverUrl"
-            type="url"
-            inputMode="url"
-            placeholder="https://…"
-            className={inputClass}
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label htmlFor="coverUrl" className="block text-sm text-foreground">Cover image URL</label>
+            <input
+              id="coverUrl"
+              name="coverUrl"
+              type="url"
+              inputMode="url"
+              placeholder="https://…"
+              className={inputClass}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="cover" className="block text-sm text-foreground">Or upload a cover file</label>
+            <input
+              id="cover"
+              name="cover"
+              type="file"
+              accept="image/*"
+              onChange={(e) => pickCover(e.target)}
+              className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-sm file:text-foreground hover:file:border-muted-foreground"
+            />
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="cover" className="block text-sm text-foreground">Or upload a cover file</label>
-          <input
-            id="cover"
-            name="cover"
-            type="file"
-            accept="image/*"
-            onChange={(e) => pickCover(e.target)}
-            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-sm file:text-foreground hover:file:border-muted-foreground"
-          />
-          <p className="text-xs text-muted-foreground">Image up to 2 MB. If both are given, the URL is used for imageURL.</p>
-        </div>
+        <p className="mt-2 text-xs text-muted-foreground">Image up to 2 MB. If both are given, the URL is used.</p>
       </fieldset>
 
       {error && (
@@ -166,13 +216,15 @@ export function UploadForm() {
         </p>
       )}
 
-      <Button
-        type="submit"
-        disabled={submitting}
-        className="h-auto rounded-full px-10 py-3.5 font-poppins text-base font-semibold disabled:cursor-wait"
-      >
-        {submitting ? "Starting agent…" : "Run agent"}
-      </Button>
+      <div className="flex justify-center">
+        <Button
+          type="submit"
+          disabled={submitting || targets.length === 0}
+          className="h-auto rounded-full px-10 py-3.5 font-poppins text-base font-semibold disabled:cursor-wait"
+        >
+          {submitting ? "Starting agent…" : "Run agent"}
+        </Button>
+      </div>
     </form>
   );
 }

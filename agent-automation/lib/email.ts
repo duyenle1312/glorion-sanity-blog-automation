@@ -11,8 +11,9 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function buildHtml(title: string, studioUrl: string): string {
+function buildHtml(title: string, studioUrl: string, site?: string): string {
   const safeTitle = escapeHtml(title);
+  const safeSite = site ? escapeHtml(site) : "";
   const safeUrl = escapeHtml(studioUrl);
   return `
     <html>
@@ -28,6 +29,7 @@ function buildHtml(title: string, studioUrl: string): string {
         <!-- Blog Title -->
         <div style="margin: 20px 0; padding: 15px; background-color: #f8f8f8; border-left: 5px solid #D32F2F;">
             <h3 style="margin: 5px 0 0 0; color: #000000;"><strong>${safeTitle}</strong></h3>
+            ${safeSite ? `<p style="margin: 8px 0 0 0; font-size: 14px; color: #555555;">Site: ${safeSite}</p>` : ""}
         </div>
 
         <!-- Studio URL -->
@@ -60,6 +62,8 @@ function buildHtml(title: string, studioUrl: string): string {
 export async function sendDraftEmail(input: {
   title: string;
   studioUrl: string;
+  /** Destination site label, shown in the subject and body. */
+  site?: string;
 }): Promise<"sent" | "skipped"> {
   const env = getEnv();
   if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL || !env.EMAIL_TO) {
@@ -83,8 +87,8 @@ export async function sendDraftEmail(input: {
     body: JSON.stringify({
       sender: { name: "GLORION Media AI Agent", email: env.BREVO_SENDER_EMAIL },
       to: recipients,
-      subject: `New blog draft ready for review: ${input.title}`,
-      htmlContent: buildHtml(input.title, input.studioUrl),
+      subject: `New blog draft ready for review${input.site ? ` (${input.site})` : ""}: ${input.title}`,
+      htmlContent: buildHtml(input.title, input.studioUrl, input.site),
     }),
   });
 

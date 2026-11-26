@@ -4,8 +4,6 @@ import { sendDraftEmail } from "@/lib/email";
 // getEnv() validates the required keys too, so they must be present for any call.
 const requiredEnv = {
   GEMINI_API_KEY: "test-gemini",
-  SANITY_API_WRITE_TOKEN: "test-sanity-token",
-  SANITY_STUDIO_URL: "https://studio.example.com",
 };
 
 const fullEnv = {
@@ -86,9 +84,19 @@ describe("sendDraftEmail", () => {
     });
     expect(body.to).toEqual([{ email: "a@x.com" }, { email: "b@y.com" }]);
     expect(body.subject).toBe("New blog draft ready for review: My Post");
+
     expect(body.htmlContent).toContain("GLORION");
     expect(body.htmlContent).toContain("isPublished");
     expect(body.htmlContent).toContain("https://studio.example.com/desk/post;abc");
+  });
+
+  it("names the destination site in subject and body", async () => {
+    Object.assign(process.env, fullEnv);
+    vi.mocked(fetch).mockResolvedValue(okResponse());
+    await sendDraftEmail({ title: "My Post", studioUrl: "https://s.example.com", site: "Tsvetta <Website>" });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(body.subject).toBe("New blog draft ready for review (Tsvetta <Website>): My Post");
+    expect(body.htmlContent).toContain("Site: Tsvetta &lt;Website&gt;");
   });
 
   it("HTML-escapes title and URL in the email body", async () => {

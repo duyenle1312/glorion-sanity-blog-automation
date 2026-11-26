@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createClient, type SanityClient } from "@sanity/client";
-import { getEnv } from "@/lib/env";
+import { DEFAULT_TARGET_ID, resolveTarget } from "@/lib/targets";
 import type { BodyItem } from "@/lib/convert/body-schema";
 
 export type BlogDraftInput = {
@@ -13,24 +13,29 @@ export type BlogDraftInput = {
   body: BodyItem[];
 };
 
-let client: SanityClient | null = null;
+const clients = new Map<string, SanityClient>();
+let testClient: SanityClient | null = null;
 
-/** Inject a fake client in tests; pass null to reset. */
+/** Inject a fake client (used for every target) in tests; pass null to reset. */
 export function setSanityClient(c: SanityClient | null): void {
-  client = c;
+  testClient = c;
+  clients.clear();
 }
 
-export function getSanityClient(): SanityClient {
+export function getSanityClient(targetId: string = DEFAULT_TARGET_ID): SanityClient {
+  if (testClient) return testClient;
+  let client = clients.get(targetId);
   if (!client) {
-    const env = getEnv();
+    const target = resolveTarget(targetId);
     client = createClient({
-      projectId: env.SANITY_PROJECT_ID,
-      dataset: env.SANITY_DATASET,
-      token: env.SANITY_API_WRITE_TOKEN,
+      projectId: target.projectId,
+      dataset: target.dataset,
+      token: target.token,
       apiVersion: "2026-05-15",
       useCdn: false,
       perspective: "raw",
     });
+    clients.set(targetId, client);
   }
   return client;
 }
@@ -40,15 +45,20 @@ export function getSanityClient(): SanityClient {
  * `excludeId` (a bare uuid) ignores that document's own draft and published
  * versions, so a retried write does not collide with its earlier attempt.
  */
-export async function slugExists(slug: string, excludeId?: string): Promise<boolean> {
+export async function slugExists(
+  slug: string,
+  excludeId?: string,
+  targetId: string = DEFAULT_TARGET_ID,
+): Promise<boolean> {
+  const client = getSanityClient(targetId);
   if (excludeId === undefined) {
-    return getSanityClient().fetch<boolean>(
+    return client.fetch<boolean>(
       'count(*[_type=="blog" && slug.current==$slug]) > 0',
       { slug },
       { perspective: "raw" },
     );
   }
-  return getSanityClient().fetch<boolean>(
+  return client.fetch<boolean>(
     'count(*[_type=="blog" && slug.current==$slug && !(_id in [$draftId, $publishedId])]) > 0',
     { slug, draftId: `drafts.${excludeId}`, publishedId: excludeId },
     { perspective: "raw" },
@@ -64,12 +74,11 @@ export function draftIdFromKey(key: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-export async function uploadCover(file: {
-  bytes: Uint8Array;
-  filename: string;
-  contentType: string;
-}): Promise<{ assetId: string; url: string }> {
-  const asset = await getSanityClient().assets.upload(
+export async function uploadCover(
+  file: { bytes: Uint8Array; filename: string; contentType: string },
+  targetId: string = DEFAULT_TARGET_ID,
+): Promise<{ assetId: string; url: string }> {
+  const asset = await getSanityClient(targetId).assets.upload(
     "image",
     Buffer.from(file.bytes),
     { filename: file.filename, contentType: file.contentType },
@@ -77,8 +86,8 @@ export async function uploadCover(file: {
   return { assetId: asset._id, url: asset.url };
 }
 
-export function studioDraftUrl(id: string): string {
-  const base = getEnv().SANITY_STUDIO_URL.replace(/\/+$/, "");
+export function studioDraftUrl(id: string, targetId: string = DEFAULT_TARGET_ID): string {
+  const base = resolveTarget(targetId).studioUrl.replace(/\/+$/, "");
   return `${base}/structure/blog;${id.replace(/^drafts\./, "")}`;
 }
 
@@ -90,10 +99,11 @@ export function studioDraftUrl(id: string): string {
 export async function createDraft(
   id: string,
   doc: BlogDraftInput,
+  targetId: string = DEFAULT_TARGET_ID,
 ): Promise<{ id: string; studioUrl: string }> {
   const _id = `drafts.${id}`;
   const now = new Date().toISOString();
-  await getSanityClient().createOrReplace({
+  await getSanityClient(targetId).createOrReplace({
     _id,
     _type: "blog",
     title: doc.title,
@@ -109,5 +119,5 @@ export async function createDraft(
       : {}),
     body: doc.body,
   });
-  return { id: _id, studioUrl: studioDraftUrl(_id) };
+  return { id: _id, studioUrl: studioDraftUrl(_id, targetId) };
 }

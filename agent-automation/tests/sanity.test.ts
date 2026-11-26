@@ -96,6 +96,17 @@ describe("sanity", () => {
     expect(r).toEqual({ assetId: "image-abc", url: "https://cdn/x.png" });
   });
 
+  it("draft links use the chosen target's Studio URL", async () => {
+    vi.stubEnv("SANITY_TSVETTA_WRITE_TOKEN", "t-tok");
+    vi.stubEnv("SANITY_TSVETTA_STUDIO_URL", "https://tsvetta.studio/");
+    const r = await createDraft("y", base, "tsvetta");
+    expect(r.studioUrl).toBe("https://tsvetta.studio/structure/blog;y");
+  });
+
+  it("fails clearly when the target is not configured", () => {
+    expect(() => studioDraftUrl("drafts.x", "money-signal")).toThrow(/SANITY_MONEY_SIGNAL_WRITE_TOKEN/);
+  });
+
   it("studioDraftUrl strips drafts prefix", () => {
     expect(studioDraftUrl("drafts.x")).toBe("https://studio.example/structure/blog;x");
   });

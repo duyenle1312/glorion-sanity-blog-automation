@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { validateUpload } from "@/lib/validate-upload";
 
 const PK = [0x50, 0x4b, 0x03, 0x04];
@@ -14,6 +14,32 @@ const docx = (name = "post.docx", bytes: Uint8Array = zipLike()) =>
   new File([bytes as BlobPart], name);
 
 describe("validateUpload", () => {
+  beforeEach(() => {
+    vi.stubEnv("SANITY_API_WRITE_TOKEN", "tok");
+    vi.stubEnv("SANITY_STUDIO_URL", "https://studio.example");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("defaults the target to glorion", async () => {
+    const r = await validateUpload(form({ file: docx() }));
+    expect(r.ok && r.input.target).toBe("glorion");
+  });
+
+  it("accepts a configured target", async () => {
+    vi.stubEnv("SANITY_TSVETTA_WRITE_TOKEN", "t");
+    vi.stubEnv("SANITY_TSVETTA_STUDIO_URL", "https://t.studio");
+    const r = await validateUpload(form({ file: docx(), target: "tsvetta" }));
+    expect(r.ok && r.input.target).toBe("tsvetta");
+  });
+
+  it("rejects an unconfigured or unknown target", async () => {
+    for (const target of ["tsvetta", "nope"]) {
+      const r = await validateUpload(form({ file: docx(), target }));
+      expect(r.ok).toBe(false);
+      expect(!r.ok && r.error).toMatch(/not available/);
+    }
+  });
+
   it("accepts the sample docx", async () => {
     const bytes = readFileSync("sample-blog/NFL_Sentiment_Blog.docx");
     const r = await validateUpload(form({ file: new File([bytes], "NFL_Sentiment_Blog.docx") }));

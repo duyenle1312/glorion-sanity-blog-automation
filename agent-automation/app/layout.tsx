@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Suspense>
           </div>
         </header>
-        <main className="mx-auto max-w-3xl px-6 py-12 sm:px-6">{children}</main>
+        <main className="mx-auto max-w-3xl px-6 pt-8 pb-12">{children}</main>
       </body>
     </html>
   );

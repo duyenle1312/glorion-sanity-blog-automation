@@ -12,12 +12,15 @@ import {
 import type { BodyItem } from "@/lib/convert/body-schema";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { draftIdFromKey } from "@/lib/sanity";
+import { DEFAULT_TARGET_ID, findTarget } from "@/lib/targets";
 
 export type BlogAgentInput = {
   filename: string;
   docx: Uint8Array;
   coverUrl?: string;
   coverFile?: { bytes: Uint8Array; filename: string; contentType: string };
+  /** Sanity target id from lib/targets.ts; defaults to Glorion Media. */
+  target?: string;
 };
 
 export type BlogAgentResult = { title: string; draftId: string; studioUrl: string };
@@ -83,6 +86,7 @@ analyzeStep.maxRetries = 2;
 async function coverStep(
   coverUrl: string | undefined,
   coverFile: BlogAgentInput["coverFile"],
+  target: string,
 ): Promise<Cover> {
   "use step";
   const title = STEP_TITLES.cover;
@@ -95,7 +99,7 @@ async function coverStep(
     await writeEvent({ step: "cover", status: "done", title, detail: "Using cover URL" });
     return { imageURL: coverUrl };
   }
-  const uploaded = await getDeps().uploadCover(coverFile);
+  const uploaded = await getDeps().uploadCover(coverFile, target);
   await writeEvent({ step: "cover", status: "done", title, detail: `Uploaded ${coverFile.filename}` });
   // A provided URL wins for imageURL; the uploaded asset is still attached as `image`.
   return { imageURL: coverUrl ?? uploaded.url, imageAssetId: uploaded.assetId };
@@ -105,6 +109,7 @@ async function sanityStep(
   title: string,
   analyzed: Analyzed,
   cover: Cover,
+  target: string,
 ): Promise<{ id: string; studioUrl: string }> {
   "use step";
   await writeEvent({ step: "sanity", status: "running", title: STEP_TITLES.sanity });
@@ -113,7 +118,7 @@ async function sanityStep(
   // whose response was lost replaces the same document instead of adding a
   // second one, and the slug check ignores that earlier attempt.
   const id = draftIdFromKey(getStepMetadata().stepId);
-  const slug = await uniqueSlug(slugify(title), (s) => deps.slugExists(s, id));
+  const slug = await uniqueSlug(slugify(title), (s) => deps.slugExists(s, id, target));
   const draft = await deps.createDraft(id, {
     title,
     slug,
@@ -122,7 +127,7 @@ async function sanityStep(
     ...(cover.imageURL ? { imageURL: cover.imageURL } : {}),
     ...(cover.imageAssetId ? { imageAssetId: cover.imageAssetId } : {}),
     body: analyzed.body,
-  });
+  }, target);
   await writeEvent({
     step: "sanity",
     status: "done",
@@ -133,10 +138,10 @@ async function sanityStep(
   return draft;
 }
 
-async function emailStep(title: string, studioUrl: string): Promise<void> {
+async function emailStep(title: string, studioUrl: string, site: string): Promise<void> {
   "use step";
   await writeEvent({ step: "email", status: "running", title: STEP_TITLES.email });
-  const outcome = await getDeps().sendDraftEmail({ title, studioUrl });
+  const outcome = await getDeps().sendDraftEmail({ title, studioUrl, site });
   await writeEvent(
     outcome === "sent"
       ? { step: "email", status: "done", title: STEP_TITLES.email, detail: "Notification sent" }
@@ -150,13 +155,20 @@ export async function blogAgentWorkflow(input: BlogAgentInput): Promise<BlogAgen
 
   let title: string;
   let draft: { id: string; studioUrl: string };
+  const target = input.target ?? DEFAULT_TARGET_ID;
+  const site = findTarget(target)?.label ?? target;
   try {
-    await emit({ step: "received", status: "done", title: STEP_TITLES.received, detail: input.filename });
+    await emit({
+      step: "received",
+      status: "done",
+      title: STEP_TITLES.received,
+      detail: `${input.filename} → ${site}`,
+    });
     const converted = await convertStep(input.filename, input.docx);
     title = converted.title;
     const analyzed = await analyzeStep(converted);
-    const cover = await coverStep(input.coverUrl, input.coverFile);
-    draft = await sanityStep(title, analyzed, cover);
+    const cover = await coverStep(input.coverUrl, input.coverFile, target);
+    draft = await sanityStep(title, analyzed, cover, target);
   } catch (err) {
     await emit({ step: "error", status: "error", title: STEP_TITLES.error, detail: message(err) });
     await closeTimeline();
@@ -164,7 +176,7 @@ export async function blogAgentWorkflow(input: BlogAgentInput): Promise<BlogAgen
   }
 
   try {
-    await emailStep(title, draft.studioUrl);
+    await emailStep(title, draft.studioUrl, site);
   } catch (err) {
     // The draft exists; a failed notification must not fail the run.
     await emit({ step: "email", status: "error", title: STEP_TITLES.email, detail: message(err) });

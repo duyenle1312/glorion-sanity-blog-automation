@@ -1,4 +1,5 @@
 import type { BlogAgentInput } from "@/workflows/blog-agent";
+import { configuredTargets, DEFAULT_TARGET_ID } from "@/lib/targets";
 
 import {
   COVER_TOO_LARGE,
@@ -19,7 +20,16 @@ const fail = (error: string): UploadResult => ({ ok: false, error });
 const isFile = (v: unknown): v is File => typeof v === "object" && v !== null && "arrayBuffer" in v;
 
 /** Validates the multipart upload (async: it reads the file bytes to check the zip header). */
-export async function validateUpload(form: FormData): Promise<UploadResult> {
+export async function validateUpload(
+  form: FormData,
+  env: Record<string, string | undefined> = process.env,
+): Promise<UploadResult> {
+  const rawTarget = form.get("target");
+  const target = typeof rawTarget === "string" && rawTarget !== "" ? rawTarget : DEFAULT_TARGET_ID;
+  if (!configuredTargets(env).some((t) => t.id === target)) {
+    return fail(`Destination "${target}" is not available. Pick another site.`);
+  }
+
   const file = form.get("file");
   if (!isFile(file) || file.size === 0) return fail("A .docx file is required.");
   if (!file.name.toLowerCase().endsWith(".docx")) return fail("Only .docx files are supported.");
@@ -29,7 +39,7 @@ export async function validateUpload(form: FormData): Promise<UploadResult> {
   const isZip = docx[0] === 0x50 && docx[1] === 0x4b && docx[2] === 0x03 && docx[3] === 0x04;
   if (!isZip) return fail("The file is not a valid .docx document.");
 
-  const input: BlogAgentInput = { filename: file.name, docx };
+  const input: BlogAgentInput = { filename: file.name, docx, target };
 
   const rawUrl = form.get("coverUrl");
   if (typeof rawUrl === "string" && rawUrl.trim() !== "") {
