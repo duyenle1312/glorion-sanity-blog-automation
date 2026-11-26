@@ -1,5 +1,7 @@
 # Blog Studio
 
+[Demo video on Google Drive](https://drive.google.com/file/d/1o4EmIrE0SHCt1nHhHoPGau486UFvYg7t/view?usp=sharing)
+
 ![Home](./docs/images/home.png)
 
 ![Timeline](./docs/images/timeline.png)
