@@ -15,6 +15,22 @@ export default defineConfig({
 
   plugins: [structureTool(), visionTool()],
 
+  form: {
+    components: {
+      portableText: {
+        plugins: (props) => {
+          return props.renderDefault({
+            ...props,
+            plugins: {
+              ...props.plugins,
+              table: {enabled: true},
+            },
+          })
+        },
+      },
+    },
+  },
+
   schema: {
     types: schemaTypes,
   },

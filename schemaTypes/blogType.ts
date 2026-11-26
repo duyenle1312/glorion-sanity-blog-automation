@@ -52,7 +52,7 @@ export const blogType = defineType({
     defineField({
       name: 'body',
       type: 'array',
-      of: [{type: 'block'}],
+      of: [{type: 'block'}, {type: 'table'}],
     }),
   ],
 })
